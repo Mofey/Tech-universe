@@ -22,8 +22,12 @@ function makeStars(count: number): Star[] {
   }));
 }
 
-export function SpaceBackground() {
-  const stars = useMemo(() => makeStars(200), []);
+type Props = {
+  isMobile?: boolean;
+};
+
+export function SpaceBackground({ isMobile = false }: Props) {
+  const stars = useMemo(() => makeStars(isMobile ? 140 : 320), [isMobile]);
 
   return (
     <>
@@ -39,6 +43,7 @@ export function SpaceBackground() {
                 width: `${star.size}px`,
                 height: `${star.size}px`,
                 animationDelay: star.delay,
+                animation: isMobile ? "none" : undefined,
                 "--duration": star.duration,
                 "--min-opacity": star.minOpacity,
               } as CSSProperties
@@ -48,15 +53,15 @@ export function SpaceBackground() {
       </div>
 
       <div
-        className="pointer-events-none absolute left-[5%] top-[10%] h-[300px] w-[400px] rounded-full opacity-30 blur-[60px]"
+        className={`pointer-events-none absolute left-[5%] top-[10%] h-[300px] w-[400px] rounded-full opacity-30 ${isMobile ? "blur-[35px]" : "blur-[60px]"}`}
         style={{ background: "radial-gradient(ellipse, rgba(138,43,226,0.4), transparent)" }}
       />
       <div
-        className="pointer-events-none absolute right-[10%] top-[60%] h-[350px] w-[350px] rounded-full opacity-30 blur-[60px]"
+        className={`pointer-events-none absolute right-[10%] top-[60%] h-[350px] w-[350px] rounded-full opacity-30 ${isMobile ? "blur-[35px]" : "blur-[60px]"}`}
         style={{ background: "radial-gradient(ellipse, rgba(0,191,255,0.3), transparent)" }}
       />
       <div
-        className="pointer-events-none absolute bottom-[20%] left-[30%] h-[250px] w-[300px] rounded-full opacity-30 blur-[60px]"
+        className={`pointer-events-none absolute bottom-[20%] left-[30%] h-[250px] w-[300px] rounded-full opacity-30 ${isMobile ? "blur-[35px]" : "blur-[60px]"}`}
         style={{ background: "radial-gradient(ellipse, rgba(255,105,180,0.25), transparent)" }}
       />
     </>

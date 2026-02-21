@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ControlsPanel } from "./components/ControlsPanel";
 import { InfoPanel } from "./components/InfoPanel";
 import { MiniMap } from "./components/MiniMap";
@@ -9,10 +9,12 @@ import { universes } from "./data/planets";
 import { useUniverseNavigation } from "./hooks/useUniverseNavigation";
 import type { Planet } from "./types/ml";
 
-function isFormLikeTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
-  return Boolean(target.closest("[data-lock-pan='true']") || target.closest("[data-planet='true']"));
-}
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 2;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+const PAN_STEP = 60;
 
 function App() {
   if (universes.length === 0) return null;
@@ -26,9 +28,7 @@ function App() {
     zoomIn,
     zoomOut,
     zoomByWheel,
-    panBy,
     setPan,
-    panByKeyboard,
     reset,
     setZoom,
   } = useUniverseNavigation();
@@ -42,9 +42,6 @@ function App() {
   const [labelsVisible, setLabelsVisible] = useState(true);
   const [selectedPlanet, setSelectedPlanet] = useState<Planet | null>(null);
   const [exploredPlanets, setExploredPlanets] = useState<Set<string>>(new Set());
-  const [isDragging, setIsDragging] = useState(false);
-  const activePointerId = useRef<number | null>(null);
-  const lastPoint = useRef({ x: 0, y: 0 });
   const activeUniverse =
     universes.find((universe) => universe.id === activeUniverseId) ?? universes[0];
   const foundationTitleByUniverse: Record<string, string> = {
@@ -64,11 +61,11 @@ function App() {
   const foundationTitle =
     foundationTitleByUniverse[activeUniverse.id] ?? "Core Foundation";
   const isMobile = viewportWidth < 640;
-  const planetScale = isMobile ? 0.76 : viewportWidth < 1024 ? 0.9 : 1;
-  const mobileDefaultZoom = 0.75;
-  const mobilePanYOffset = 70;
+  const planetScale = isMobile ? 0.86 : viewportWidth < 1024 ? 0.92 : 1;
+  const mobileDefaultZoom = 0.9;
+  const mobilePanYOffset = 30;
   const renderedPanY = isMobile ? panY + mobilePanYOffset : panY;
-  const canPan = true;
+  const canPan = false;
   const planets = activeUniverse.planets;
   const exploredCount = planets.filter((planet) =>
     exploredPlanets.has(`${activeUniverse.id}:${planet.id}`),
@@ -88,31 +85,6 @@ function App() {
   }, [isMobile, setZoom]);
 
   useEffect(() => {
-    const onPointerMove = (e: PointerEvent) => {
-      if (!isDragging || activePointerId.current !== e.pointerId) return;
-      const dx = e.clientX - lastPoint.current.x;
-      const dy = e.clientY - lastPoint.current.y;
-      panBy(dx, dy);
-      lastPoint.current = { x: e.clientX, y: e.clientY };
-    };
-
-    const stopDragging = (e: PointerEvent) => {
-      if (activePointerId.current !== e.pointerId) return;
-      setIsDragging(false);
-      activePointerId.current = null;
-    };
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", stopDragging);
-    window.addEventListener("pointercancel", stopDragging);
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", stopDragging);
-      window.removeEventListener("pointercancel", stopDragging);
-    };
-  }, [isDragging, panBy]);
-
-  useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (selectedPlanet && e.key === "Escape") {
         setSelectedPlanet(null);
@@ -120,14 +92,13 @@ function App() {
       }
       if (e.key === "+" || e.key === "=") zoomIn();
       else if (e.key === "-") zoomOut();
-      else panByKeyboard(e.key);
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [panByKeyboard, selectedPlanet, zoomIn, zoomOut]);
+  }, [selectedPlanet, zoomIn, zoomOut]);
 
-  const openPlanet = (planet: Planet) => {
+  const openPlanet = useCallback((planet: Planet) => {
     const targetZoom = isMobile ? 1.2 : 1.35;
     const planetX = (planet.x / 100) * viewportWidth;
     const planetY = (planet.y / 100) * viewportHeight;
@@ -144,7 +115,7 @@ function App() {
       next.add(`${activeUniverse.id}:${planet.id}`);
       return next;
     });
-  };
+  }, [activeUniverse.id, isMobile, mobilePanYOffset, setPan, setZoom, viewportHeight, viewportWidth]);
 
   const handleResetView = () => {
     reset();
@@ -153,22 +124,16 @@ function App() {
 
   return (
     <main
-      className={`space-bg relative h-full w-full overflow-hidden ${
-        isDragging ? "cursor-grabbing" : canPan ? "cursor-grab" : "cursor-default"
+      className={`space-bg relative h-[100dvh] w-screen overflow-hidden ${
+        canPan ? "cursor-grab" : "cursor-default"
       }`}
-      style={{ touchAction: isDragging ? "none" : "manipulation" }}
-      onPointerDown={(e) => {
-        if (!canPan || isFormLikeTarget(e.target)) return;
-        activePointerId.current = e.pointerId;
-        setIsDragging(true);
-        lastPoint.current = { x: e.clientX, y: e.clientY };
-      }}
+      style={{ touchAction: "manipulation" }}
       onWheel={(e) => {
         e.preventDefault();
         zoomByWheel(e.deltaY);
       }}
     >
-      <SpaceBackground />
+      <SpaceBackground isMobile={isMobile} />
 
       <UniverseScene
         planets={planets}
@@ -176,6 +141,8 @@ function App() {
         panX={panX}
         panY={renderedPanY}
         labelsVisible={labelsVisible}
+        isMobile={isMobile}
+        isDragging={false}
         planetScale={planetScale}
         onSelect={openPlanet}
       />
@@ -191,8 +158,6 @@ function App() {
           onChangeUniverse={(universeId) => {
             setActiveUniverseId(universeId);
             setSelectedPlanet(null);
-            setIsDragging(false);
-            activePointerId.current = null;
             handleResetView();
           }}
         />
@@ -209,9 +174,11 @@ function App() {
       <div data-lock-pan="true">
         <ControlsPanel
           zoom={zoom}
-          onZoomIn={zoomIn}
-          onZoomOut={zoomOut}
-          onReset={handleResetView}
+          onSetZoom={(value) => setZoom(clamp(value, MIN_ZOOM, MAX_ZOOM))}
+          onPanUp={() => setPan(panX, panY + PAN_STEP)}
+          onPanDown={() => setPan(panX, panY - PAN_STEP)}
+          onPanLeft={() => setPan(panX + PAN_STEP, panY)}
+          onPanRight={() => setPan(panX - PAN_STEP, panY)}
           onToggleLabels={() => setLabelsVisible((v) => !v)}
         />
       </div>

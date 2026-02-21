@@ -1,0 +1,5 @@
+@import "./styles/universe.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

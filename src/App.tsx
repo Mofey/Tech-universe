@@ -156,7 +156,7 @@ function App() {
       className={`space-bg relative h-full w-full overflow-hidden ${
         isDragging ? "cursor-grabbing" : canPan ? "cursor-grab" : "cursor-default"
       }`}
-      style={{ touchAction: canPan ? "none" : "manipulation" }}
+      style={{ touchAction: isDragging ? "none" : "manipulation" }}
       onPointerDown={(e) => {
         if (!canPan || isFormLikeTarget(e.target)) return;
         activePointerId.current = e.pointerId;

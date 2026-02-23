@@ -74,11 +74,11 @@ export function InfoPanel({
       >
         <div className="mb-1 text-[11px] text-violet-300">NAVIGATION TIPS</div>
         <div className="text-xs leading-6 text-slate-400">
-          Drag to pan the galaxy
+          🧭 Use N/S/W/E controls to move the galaxy
           <br />
-          Scroll or buttons to zoom
+          🔎 Use the zoom slider (or mouse wheel) to zoom
           <br />
-          Click planets to explore
+          🪐 Click planets to focus and explore
         </div>
       </div>
     </aside>
